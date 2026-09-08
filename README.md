@@ -17,17 +17,15 @@ Windows 本机上的 Local Developer Agent（当前做到 M0–M4）。
 ## 环境
 
 - Windows + Python 3.11+
-- 阿里云百炼 API Key（OpenAI 兼容口）
+- 阿里云百炼 API Key（OpenAI 兼容口）。组内测试用公司百炼 token，各自配在本机环境变量里，不要写入仓库。
 
-在**用户级**环境变量里配置（不要写进仓库或 `.env`）：
+在用户级环境变量中配置（改完后新开终端）：
 
 | 变量 | 说明 |
 |------|------|
 | `DASHSCOPE_API_KEY` | 必填 |
 | `DASHSCOPE_BASE_URL` | 可选，默认 `https://dashscope.aliyuncs.com/compatible-mode/v1` |
 | `DASHSCOPE_MODEL` | 可选，默认 `qwen-plus` |
-
-改完环境变量后需要新开终端。
 
 ## 安装
 
@@ -55,6 +53,8 @@ python -m local_dev_agent -p "要做的事" --cwd <工作区目录> [--model qwe
 | `--max-steps` | 最多循环轮数，默认 20 |
 
 中途停止：`Ctrl+C`。
+
+若报百炼 **401**，说明当前终端里的 `DASHSCOPE_API_KEY` 无效，换一把有效 token 后新开终端再试。Windows 控制台中文乱码时可先 `chcp 65001`。
 
 ## 验收夹具
 
