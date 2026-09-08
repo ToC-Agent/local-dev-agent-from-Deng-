@@ -2,18 +2,11 @@
 
 Windows 上的 Local Developer Agent（先做 M0–M4）。
 
-**项目路径：`E:\local-dev-agent`**  
-不要使用 `C:\Users\user\local-dev-agent`（那是中断留下的半成品，作废）。
-
----
-
 ## 给下一个 Cursor 对话的提示词（直接复制）
 
-把下面整段发给新对话。先用 Cursor 打开 `E:\local-dev-agent`，再开始。
+把下面整段发给新对话。先用 Cursor 打开 `./local-dev-agent`，再开始。
 
 ```text
-你在 E:\local-dev-agent 里实现 Local Developer Agent 的 M0–M4。
-用中文回复。用户工程实践偏弱：讲清整体逻辑、关键函数和语法，做完后说明怎么自己跑一遍。
 
 【目标】
 做一个能在 Windows 本机跑的开发者 Agent：打开 workspace，读/搜/改文件，跑 Shell，看结果，自动继续，最终给出答复。
@@ -28,7 +21,7 @@ Windows 上的 Local Developer Agent（先做 M0–M4）。
 【参考结构（Hermes 的层，不是它的代码）】
 入口 CLI（薄）
   → Agent Loop
-  → Model Gateway（接口，第一家只接百炼）
+  → Model Gateway（接口，目前是百炼）
   → Tool Registry
   → read / search / write / patch / shell / git_diff
 Core 不许依赖 React / Electron / Tauri。
@@ -54,11 +47,8 @@ M2 Model Gateway
   DASHSCOPE_API_KEY
   DASHSCOPE_BASE_URL（默认 https://dashscope.aliyuncs.com/compatible-mode/v1）
   DASHSCOPE_MODEL（默认 qwen-plus）
-- HTTP 必须用 httpx，并 trust_env=False。
-  原因：本机 IE 代理是 127.0.0.1:7897，但代理程序经常没开；Python urllib 会走这个死代理，报 WinError 10061。
 - 已实测：qwen-plus 能聊天，也能 function calling。
 - count_tokens / compact 第一版可以很简单（估算 + 截断），但接口要在。
-- 不要把 Key 打印到日志。
 
 M3 Tool Runtime
 - 必须有 Tool Registry，不要把工具写死在 prompt 里。
@@ -77,19 +67,10 @@ M4 Agent Loop
 - 本阶段不用漂亮 CLI，有 argparse 即可：
   python -m local_dev_agent -p "任务" --cwd <workspace> [--model ...] [--max-steps 20]
 
-【环境（已经配好，不要重配 Key）】
-- Windows 10/11，不要为了 Hermes 去上 WSL。
-- Python 3.11.5：D:\Python\Python311\python.exe
-- 已有 git、uv
-- 用户级环境变量已写入桌面那把百炼 token，前缀应是 sk-sp-
-- 机器级还有另一把旧 Key（sk-de08 开头），以用户级为准。新开的终端才看得到用户级变量。
-- 桌面文件 C:\Users\user\Desktop\百炼token.txt 可以读，但不要复制进仓库。
-- 依赖建议：httpx；开发依赖 pytest。用 uv 或 pip 建 .venv。
-
 【建议目录】
-E:\local-dev-agent\
-  README.md                 （本文件，可保留并补安装说明）
-  DESIGN.md                 （必须写：M0–M4 与 Hermes 分层对照表）
+local-dev-agent\
+  README.md                 
+  DESIGN.md                 （M0-M4,方便后续与hermes结构进行参考）
   pyproject.toml
   .gitignore
   local_dev_agent\
@@ -106,34 +87,28 @@ E:\local-dev-agent\
   fixtures\buggy_math\      （埋一个小 bug + pytest）
   tests\                    （至少测工作区路径沙箱、apply_patch）
 
-【夹具要求】
-做一个很小的 Python 包/目录，测试故意失败（例如整数除法导致 mean([1,2]) != 1.5）。
-README 里写清：先 pytest 看红，再跑 Agent，再 pytest 看绿。
-
 【完成定义】
 1. DESIGN.md 写完对照表。
 2. 单元测试（沙箱/补丁）能过。
-3. 你亲自跑一遍 Agent 修 fixtures/buggy_math，直到 pytest 变绿。修不绿就继续改 Loop/提示词/工具，不要只交骨架。
-4. 不要 commit，除非用户要求。
 
 【实现时注意】
 - 系统提示词单独放 harness/system_prompt.py，教模型：先搜再读，改完立刻跑测试，测试红就继续。
 - Shell 默认允许在工作区内跑 pytest / git / python；工作区外写入直接 deny。
-- 编码全程 UTF-8。
+
 ```
 
 ---
 
-## 本机已具备（给人看的摘要）
+## 本机已具备
 
 | 项 | 值 |
 |----|----|
 | 项目 | `E:\local-dev-agent` |
 | 语言 | Python 3.11，Windows 原生 |
 | 模型 | 阿里云百炼 `qwen-plus`，OpenAI 兼容口 |
-| 结构 | 参考 Hermes 分层，自研精简实现 |
+| 结构 | 参考 Hermes 分层 |
 | 验收 | `fixtures/buggy_math` 从测试红到绿 |
-| 密钥 | 用户环境变量 `DASHSCOPE_*`，不要入库 |
+| 密钥 | 本地环境变量 `DASHSCOPE_*`，后续测试时需要改，当前用的是公司百炼的token|
 
 ## 安装
 
@@ -145,10 +120,8 @@ uv venv --python D:\Python\Python311\python.exe
 uv pip install -e ".[dev]"
 ```
 
-不要把 API Key 写进仓库或 `.env`。确认：
-
 ```powershell
-$env:DASHSCOPE_API_KEY.Substring(0,6)   # 应是 sk-sp-
+$env:DASHSCOPE_API_KEY.Substring(0,6)   
 ```
 
 ## 先看红，再让 Agent 修，再看绿
@@ -172,14 +145,14 @@ Agent 自己的单元测试（沙箱 / apply_patch）：
 
 通用用法：
 
-```powershell
+```powershell（模型可选，轮次可选）
 python -m local_dev_agent -p "任务" --cwd <workspace> [--model qwen-plus] [--max-steps 20]
 ```
 
+
 分层说明见 `DESIGN.md`。
 
-## 排错
+## 已知错误
 
-- 本机 IE 代理经常指向 `127.0.0.1:7897` 但代理没开。装依赖时若出现 `WinError 10061`，先清空 `HTTP_PROXY` / `HTTPS_PROXY`，或设 `NO_PROXY=*`。Agent 访问百炼已经用 `httpx(trust_env=False)`，不受这套代理影响。
-- 若 Agent 报百炼 **401**：当前进程里的 `DASHSCOPE_API_KEY` 被拒绝。桌面/用户级 token 失效时，到百炼控制台重新生成，写入**用户级**环境变量后新开终端。不要把 Key 写进仓库。
+- 若 Agent 报百炼 **401**：当前进程里的 `DASHSCOPE_API_KEY` 被拒绝。桌面/用户级 token 失效时，到百炼控制台重新生成，写入**用户级**环境变量后新开终端。不把 Key 写进仓库。
 - Windows 控制台中文乱码时，可先执行 `chcp 65001`，或直接看 Agent 改过的文件与 pytest 结果。
