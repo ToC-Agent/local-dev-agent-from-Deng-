@@ -20,7 +20,7 @@
 CLI（-p / --cwd / --model / --max-steps）
   → AgentLoop.run(task)
       → 把 Turn 里的 Item 编成 ChatMessage
-      → BailianProvider.complete(messages, tools=Registry.schemas)
+      → ZhongtaiProvider / BailianProvider.complete(messages, tools=Registry.schemas)
       → 若有 tool_calls：权限检查 → execute → 记 ToolResult / FileChange / CommandExecution
       → 再调模型，直到纯文本 final 或 max_steps / Ctrl+C
 ```
@@ -52,11 +52,17 @@ Item 种类：`UserMessage`、`AgentMessage`、`Reasoning`、`ToolCall`、`ToolR
 - `count_tokens()`：按约 2 字符/token 估算
 - `compact()`：保留 system + 最近消息，超限则截断
 
-`BailianProvider`：
+两家都走 OpenAI 兼容口（`gateway/openai_compat.py`），差别只在鉴权头：
 
-- 环境变量：`DASHSCOPE_API_KEY`、`DASHSCOPE_BASE_URL`（默认 compatible-mode/v1）、`DASHSCOPE_MODEL`（默认 `qwen-plus`）
-- HTTP：`httpx.Client(..., trust_env=False)`，避免本机死代理 `127.0.0.1:7897`
+| Provider | 默认地址 | 鉴权 | 默认模型 |
+|----------|----------|------|----------|
+| `ZhongtaiProvider`（默认） | `http://10.8.144.65:30191/v1` | `X-API-Key` | `qwen3.7-plus` |
+| `BailianProvider` | 百炼 compatible-mode/v1 | `Authorization: Bearer` | `qwen-plus` |
+
+- 环境变量：中台 `ZHONGTAI_*` / `AGENT_PROVIDER`；百炼 `DASHSCOPE_*`
+- HTTP：`httpx.Client(..., trust_env=False)`
 - 不把 Key 写入仓库，也不打印到日志
+- 这是「换模型通道」，不是把 Agent 注册进中台应用市场
 
 ## M3 Tool Runtime
 
@@ -88,7 +94,7 @@ Shell 默认可跑 pytest / git / python；工作区外**写入**由文件工具
 CLI：
 
 ```text
-python -m local_dev_agent -p "任务" --cwd <workspace> [--model ...] [--max-steps 20]
+python -m local_dev_agent -p "任务" --cwd <workspace> [--provider zhongtai] [--model ...] [--max-steps 20]
 ```
 
 ## 关键函数（给后续自己改时对照）
@@ -98,7 +104,8 @@ python -m local_dev_agent -p "任务" --cwd <workspace> [--model ...] [--max-ste
 | `resolve_in_workspace` | `tools/sandbox.py` | 规范化路径并拒绝逃逸 |
 | `ToolRegistry.execute` | `tools/registry.py` | 按名字找工具，带 timeout 跑 |
 | `execute_apply_patch` | `tools/files.py` | 唯一子串替换 |
-| `BailianProvider.complete` | `gateway/bailian.py` | 调百炼 chat/completions |
+| `OpenAICompatProvider.complete` | `gateway/openai_compat.py` | 调 `/chat/completions` |
+| `ZhongtaiProvider` | `gateway/zhongtai.py` | 中台通道，`X-API-Key` |
 | `AgentLoop.run` | `loop/agent.py` | 整轮循环 |
 | `AgentLoop._build_messages` | `loop/agent.py` | Item → OpenAI 消息（含 tool 角色） |
 

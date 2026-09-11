@@ -69,8 +69,8 @@ class AgentLoop:
                     status = getattr(getattr(exc, "response", None), "status_code", None)
                     if status == 401:
                         detail += (
-                            "。当前 DASHSCOPE_API_KEY 被百炼拒绝。"
-                            "请核对用户级 Key；若桌面 token 已失效，到百炼控制台重新生成后写入用户环境变量。"
+                            "。模型通道返回 401：Key 无效或未带对请求头。"
+                            "中台请核对 ZHONGTAI_API_KEY（X-API-Key）；百炼请核对 DASHSCOPE_API_KEY。"
                         )
                     self._add(
                         turn,

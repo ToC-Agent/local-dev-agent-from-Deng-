@@ -17,15 +17,21 @@ Windows 本机上的 Local Developer Agent（当前做到 M0–M4）。
 ## 环境
 
 - Windows + Python 3.11+
-- 阿里云百炼 API Key（OpenAI 兼容口）。组内测试用公司百炼 token，各自配在本机环境变量里，不要写入仓库。
+- 默认走**智能体中台**的对话模型（内网 `10.8.144.65:30191`，需能访问公司网络）
+- 百炼通道仍保留，用 `--provider bailian` 切换
 
-在用户级环境变量中配置（改完后新开终端）：
+中台 Key 不要写入仓库。优先设用户级环境变量（改完后新开终端）：
 
 | 变量 | 说明 |
 |------|------|
-| `DASHSCOPE_API_KEY` | 必填 |
-| `DASHSCOPE_BASE_URL` | 可选，默认 `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `DASHSCOPE_MODEL` | 可选，默认 `qwen-plus` |
+| `ZHONGTAI_API_KEY` | 中台 `X-API-Key`，推荐 |
+| `ZHONGTAI_BASE_URL` | 可选，默认 `http://10.8.144.65:30191/v1` |
+| `ZHONGTAI_MODEL` | 可选，默认 `qwen3.7-plus` |
+| `AGENT_PROVIDER` | 可选，`zhongtai`（默认）或 `bailian` |
+
+本机 Cursor 若已配置中台 MCP 的 `X-API-Key`，未设环境变量时也会复用那一把，仅用于本机开发。
+
+切回百炼时使用 `DASHSCOPE_API_KEY` / `DASHSCOPE_BASE_URL` / `DASHSCOPE_MODEL`。
 
 ## 安装
 
@@ -42,19 +48,20 @@ python -m pip install -e ".[dev]"
 ## 使用
 
 ```powershell
-python -m local_dev_agent -p "要做的事" --cwd <工作区目录> [--model qwen-plus] [--max-steps 20]
+python -m local_dev_agent -p "要做的事" --cwd <工作区目录> [--provider zhongtai] [--model qwen3.7-plus] [--max-steps 20]
 ```
 
 | 参数 | 含义 |
 |------|------|
 | `-p` / `--prompt` | 任务 |
 | `--cwd` | 工作区根目录，Agent 只能改这里面的文件 |
+| `--provider` | `zhongtai`（默认）或 `bailian` |
 | `--model` | 覆盖默认模型 |
 | `--max-steps` | 最多循环轮数，默认 20 |
 
 中途停止：`Ctrl+C`。
 
-若报百炼 **401**，说明当前终端里的 `DASHSCOPE_API_KEY` 无效，换一把有效 token 后新开终端再试。Windows 控制台中文乱码时可先 `chcp 65001`。
+若报 **401**：中台请核对 `ZHONGTAI_API_KEY` 且本机要能访问内网；百炼请核对 `DASHSCOPE_API_KEY`。Windows 控制台中文乱码时可先 `chcp 65001`。
 
 ## 验收夹具
 

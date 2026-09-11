@@ -13,8 +13,7 @@ def _configure_stdio() -> None:
         if reconfigure:
             reconfigure(encoding="utf-8", errors="replace")
 
-from local_dev_agent.config import load_settings
-from local_dev_agent.gateway.bailian import BailianProvider
+from local_dev_agent.config import build_provider, load_settings
 from local_dev_agent.loop.agent import AgentLoop
 from local_dev_agent.tools.registry import build_default_registry
 
@@ -23,7 +22,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="local_dev_agent", description="Local Developer Agent")
     parser.add_argument("-p", "--prompt", required=True, help="用户任务")
     parser.add_argument("--cwd", default=".", help="workspace 根目录")
-    parser.add_argument("--model", default=None, help="覆盖 DASHSCOPE_MODEL")
+    parser.add_argument(
+        "--provider",
+        default=None,
+        choices=["zhongtai", "bailian"],
+        help="模型通道，默认 zhongtai",
+    )
+    parser.add_argument("--model", default=None, help="覆盖默认模型名")
     parser.add_argument("--max-steps", type=int, default=20, dest="max_steps")
     return parser
 
@@ -37,24 +42,27 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        settings = load_settings(model_override=args.model)
+        settings = load_settings(
+            model_override=args.model,
+            provider_override=args.provider,
+        )
     except RuntimeError as exc:
         print(f"[error] {exc}", flush=True)
         return 2
 
     registry = build_default_registry()
-    with BailianProvider(
-        api_key=settings.api_key,
-        base_url=settings.base_url,
-        model=settings.model,
-    ) as provider:
+    with build_provider(settings) as provider:
         agent = AgentLoop(
             provider=provider,
             registry=registry,
             workspace_root=workspace,
             max_steps=args.max_steps,
         )
-        print(f"[thread] {agent.thread.id} workspace={workspace} model={settings.model}", flush=True)
+        print(
+            f"[thread] {agent.thread.id} provider={settings.provider} "
+            f"model={settings.model} workspace={workspace}",
+            flush=True,
+        )
         turn = agent.run(args.prompt)
         print(f"[turn] {turn.id} status={turn.status} items={len(turn.items)}", flush=True)
         if turn.status == "completed":
